@@ -12,82 +12,92 @@ class DataProcessor
     /**
      * @var int
      */
-    protected $start;
-
-    /**
-     * Columns to escape value.
-     *
-     * @var array
-     */
-    protected $escapeColumns = [];
-
-    /**
-     * Processed data output.
-     *
-     * @var array
-     */
-    protected $output = [];
-
+    protected int $start;
     /**
      * @var array
      */
-    protected $appendColumns = [];
+    protected array $output = [];
+
+    /**
+     * @var array<array-key, array{name: string, content: mixed}>
+     */
+    protected array $appendColumns = [];
+
+    /**
+     * @var array<array-key, array{name: string, content: mixed}>
+     */
+    protected array $editColumns = [];
 
     /**
      * @var array
      */
-    protected $editColumns = [];
+    protected array $templates = [];
 
     /**
      * @var array
      */
-    protected $excessColumns = [];
+    protected array $rawColumns = [];
 
     /**
-     * @var mixed
+     * @var array|string[]
      */
-    protected $results;
+    protected array $exceptions = ['DT_RowId', 'DT_RowClass', 'DT_RowData', 'DT_RowAttr'];
 
     /**
      * @var array
      */
-    protected $templates;
+    protected array $onlyColumns = [];
+
+    /**
+     * @var array
+     */
+    protected array $makeHidden = [];
+
+    /**
+     * @var array
+     */
+    protected array $makeVisible = [];
+
+    /**
+     * @var array
+     */
+    protected array $excessColumns = [];
+
+    /**
+     * @var string|array
+     */
+    protected mixed $escapeColumns = [];
+
+    /**
+     * @var iterable
+     */
+    protected iterable $results;
 
     /**
      * @var bool
      */
-    protected $includeIndex;
+    protected bool $includeIndex = false;
 
     /**
-     * @var array
-     */
-    protected $rawColumns;
-
-    /**
-     * @var array
-     */
-    protected $exceptions = ['DT_RowId', 'DT_RowClass', 'DT_RowData', 'DT_RowAttr'];
-
-    /**
-     * @param  mixed  $results
+     * @param  iterable  $results
      * @param  array  $columnDef
      * @param  array  $templates
      * @param  int  $start
      */
-    public function __construct($results, array $columnDef, array $templates, $start)
+    public function __construct($results, array $columnDef, array $templates, int $start = 0)
     {
-        $this->results       = $results;
-        $this->appendColumns = $columnDef['append'];
-        $this->editColumns   = $columnDef['edit'];
-        $this->excessColumns = $columnDef['excess'];
-        $this->onlyColumns   = $columnDef['only'];
-        $this->escapeColumns = $columnDef['escape'];
-        $this->includeIndex  = $columnDef['index'];
-        $this->rawColumns    = $columnDef['raw'];
-        $this->makeHidden    = $columnDef['hidden'];
-        $this->makeVisible   = $columnDef['visible'];
-        $this->templates     = $templates;
-        $this->start         = $start;
+        $this->results = $results;
+        $this->appendColumns = $columnDef['append'] ?? [];
+        $this->editColumns = $columnDef['edit'] ?? [];
+        $this->excessColumns = $columnDef['excess'] ?? [];
+        $this->onlyColumns = $columnDef['only'] ?? [];
+        $this->escapeColumns = $columnDef['escape'] ?? [];
+        $this->includeIndex = $columnDef['index'] ?? false;
+        $this->rawColumns = $columnDef['raw'] ?? [];
+        $this->makeHidden = $columnDef['hidden'] ?? [];
+        $this->makeVisible = $columnDef['visible'] ?? [];
+        $this->templates = $templates;
+        $this->start = $start;
     }
 
     /**
@@ -96,13 +106,13 @@ class DataProcessor
      * @param  bool  $object
      * @return array
      */
-    public function process($object = false)
+    public function process($object = false): array
     {
         $this->output = [];
-        $indexColumn  = config('datatables.index_column', 'DT_RowIndex');
+        $indexColumn = config('datatables.index_column', 'DT_RowIndex');
 
         foreach ($this->results as $row) {
-            $data  = Helper::convertToArray($row, ['hidden' => $this->makeHidden, 'visible' => $this->makeVisible]);
+            $data = Helper::convertToArray($row, ['hidden' => $this->makeHidden, 'visible' => $this->makeVisible]);
             $value = $this->addColumns($data, $row);
             $value = $this->editColumns($value, $row);
             $value = $this->setupRowVariables($value, $row);
@@ -122,19 +132,23 @@ class DataProcessor
     /**
      * Process add columns.
      *
-     * @param  mixed  $data
-     * @param  mixed  $row
+     * @param  array  $data
+     * @param  array|object|\Illuminate\Database\Eloquent\Model  $row
      * @return array
      */
-    protected function addColumns($data, $row)
+    protected function addColumns(array $data, $row): array
     {
         foreach ($this->appendColumns as $value) {
-            if ($value['content'] instanceof Formatter) {
+            $content = $value['content'];
+            if ($content instanceof Formatter) {
                 $column = str_replace('_formatted', '', $value['name']);
 
-                $value['content'] = $value['content']->format($data[$column], $row);
+                $value['content'] = $content->format($data[$column], $row);
+                if (isset($data[$column])) {
+                    $value['content'] = $content->format($data[$column], $row);
+                }
             } else {
-                $value['content'] = Helper::compileContent($value['content'], $data, $row);
+                $value['content'] = Helper::compileContent($content, $data, $row);
             }
 
             $data = Helper::includeInArray($value, $data);
@@ -146,13 +160,13 @@ class DataProcessor
     /**
      * Process edit columns.
      *
-     * @param  mixed  $data
-     * @param  mixed  $row
+     * @param  array  $data
+     * @param  array|object  $row
      * @return array
      */
-    protected function editColumns($data, $row)
+    protected function editColumns(array $data, object|array $row): array
     {
-        foreach ($this->editColumns as $key => $value) {
+        foreach ($this->editColumns as $value) {
             $value['content'] = Helper::compileContent($value['content'], $data, $row);
             Arr::set($data, $value['name'], $value['content']);
         }
@@ -163,11 +177,11 @@ class DataProcessor
     /**
      * Setup additional DT row variables.
      *
-     * @param  mixed  $data
-     * @param  mixed  $row
+     * @param  array  $data
+     * @param  array|object  $row
      * @return array
      */
-    protected function setupRowVariables($data, $row)
+    protected function setupRowVariables(array $data, object|array $row): array
     {
         $processor = new RowProcessor($data, $row);
 
@@ -185,9 +199,9 @@ class DataProcessor
      * @param  array  $data
      * @return array
      */
-    protected function selectOnlyNeededColumns(array $data)
+    protected function selectOnlyNeededColumns(array $data): array
     {
-        if (is_null($this->onlyColumns)) {
+        if (empty($this->onlyColumns)) {
             return $data;
         } else {
             $results = [];
@@ -210,7 +224,7 @@ class DataProcessor
      * @param  array  $data
      * @return array
      */
-    protected function removeExcessColumns(array $data)
+    protected function removeExcessColumns(array $data): array
     {
         foreach ($this->excessColumns as $value) {
             Arr::forget($data, $value);
@@ -225,7 +239,7 @@ class DataProcessor
      * @param  array  $array
      * @return array
      */
-    public function flatten(array $array)
+    public function flatten(array $array): array
     {
         $return = [];
         foreach ($array as $key => $value) {
@@ -245,7 +259,7 @@ class DataProcessor
      * @param  array  $output
      * @return array
      */
-    protected function escapeColumns(array $output)
+    protected function escapeColumns(array $output): array
     {
         return array_map(function ($row) {
             if ($this->escapeColumns == '*') {
@@ -253,7 +267,9 @@ class DataProcessor
             } elseif (is_array($this->escapeColumns)) {
                 $columns = array_diff($this->escapeColumns, $this->rawColumns);
                 foreach ($columns as $key) {
-                    Arr::set($row, $key, e(Arr::get($row, $key)));
+                    /** @var string $content */
+                    $content = Arr::get($row, $key);
+                    Arr::set($row, $key, e($content));
                 }
             }
 
@@ -267,7 +283,7 @@ class DataProcessor
      * @param  array  $row
      * @return array
      */
-    protected function escapeRow(array $row)
+    protected function escapeRow(array $row): array
     {
         $arrayDot = array_filter(Arr::dot($row));
         foreach ($arrayDot as $key => $value) {

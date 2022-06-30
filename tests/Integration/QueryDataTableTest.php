@@ -7,10 +7,10 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Yajra\DataTables\Contracts\Formatter;
 use Yajra\DataTables\DataTables;
 use Yajra\DataTables\Facades\DataTables as DatatablesFacade;
 use Yajra\DataTables\QueryDataTable;
+use Yajra\DataTables\Tests\Formatters\DateFormatter;
 use Yajra\DataTables\Tests\Models\User;
 use Yajra\DataTables\Tests\TestCase;
 
@@ -19,12 +19,45 @@ class QueryDataTableTest extends TestCase
     use DatabaseTransactions;
 
     /** @test */
+    public function it_can_set_total_records()
+    {
+        $crawler = $this->call('GET', '/set-total-records');
+        $crawler->assertJson([
+            'draw' => 0,
+            'recordsTotal' => 10,
+            'recordsFiltered' => 20,
+        ]);
+    }
+
+    /** @test */
+    public function it_can_set_zero_total_records()
+    {
+        $crawler = $this->call('GET', '/zero-total-records');
+        $crawler->assertJson([
+            'draw' => 0,
+            'recordsTotal' => 0,
+            'recordsFiltered' => 20,
+        ]);
+    }
+
+    /** @test */
+    public function it_can_set_total_filtered_records()
+    {
+        $crawler = $this->call('GET', '/set-filtered-records');
+        $crawler->assertJson([
+            'draw' => 0,
+            'recordsTotal' => 20,
+            'recordsFiltered' => 10,
+        ]);
+    }
+
+    /** @test */
     public function it_returns_all_records_when_no_parameters_is_passed()
     {
         $crawler = $this->call('GET', '/query/users');
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 20,
         ]);
     }
@@ -37,12 +70,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19'],
+            'search' => ['value' => 'Record-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
     }
@@ -55,12 +88,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19'],
+            'search' => ['value' => 'Record-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 1,
+            'draw' => 0,
+            'recordsTotal' => 0,
             'recordsFiltered' => 1,
         ]);
     }
@@ -73,12 +106,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19 Email-19'],
+            'search' => ['value' => 'Record-19 Email-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
     }
@@ -87,7 +120,7 @@ class QueryDataTableTest extends TestCase
     public function it_accepts_a_query_using_of_factory()
     {
         $dataTable = DataTables::of(DB::table('users'));
-        $response  = $dataTable->toJson();
+        $response = $dataTable->toJson();
         $this->assertInstanceOf(QueryDataTable::class, $dataTable);
         $this->assertInstanceOf(JsonResponse::class, $response);
     }
@@ -96,7 +129,7 @@ class QueryDataTableTest extends TestCase
     public function it_accepts_a_query_using_facade()
     {
         $dataTable = DatatablesFacade::of(DB::table('users'));
-        $response  = $dataTable->toJson();
+        $response = $dataTable->toJson();
         $this->assertInstanceOf(QueryDataTable::class, $dataTable);
         $this->assertInstanceOf(JsonResponse::class, $response);
     }
@@ -105,16 +138,7 @@ class QueryDataTableTest extends TestCase
     public function it_accepts_a_query_using_facade_query_method()
     {
         $dataTable = DatatablesFacade::query(DB::table('users'));
-        $response  = $dataTable->toJson();
-        $this->assertInstanceOf(QueryDataTable::class, $dataTable);
-        $this->assertInstanceOf(JsonResponse::class, $response);
-    }
-
-    /** @test */
-    public function it_accepts_a_query_using_deprecated_facade_query_builder_method()
-    {
-        $dataTable = DatatablesFacade::queryBuilder(DB::table('users'));
-        $response  = $dataTable->toJson();
+        $response = $dataTable->toJson();
         $this->assertInstanceOf(QueryDataTable::class, $dataTable);
         $this->assertInstanceOf(JsonResponse::class, $response);
     }
@@ -123,7 +147,7 @@ class QueryDataTableTest extends TestCase
     public function it_accepts_a_query_using_ioc_container()
     {
         $dataTable = app('datatables')->query(DB::table('users'));
-        $response  = $dataTable->toJson();
+        $response = $dataTable->toJson();
         $this->assertInstanceOf(QueryDataTable::class, $dataTable);
         $this->assertInstanceOf(JsonResponse::class, $response);
     }
@@ -132,7 +156,7 @@ class QueryDataTableTest extends TestCase
     public function it_accepts_a_query_using_ioc_container_factory()
     {
         $dataTable = app('datatables')->of(DB::table('users'));
-        $response  = $dataTable->toJson();
+        $response = $dataTable->toJson();
         $this->assertInstanceOf(QueryDataTable::class, $dataTable);
         $this->assertInstanceOf(JsonResponse::class, $response);
     }
@@ -146,12 +170,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19'],
+            'search' => ['value' => 'Record-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
     }
@@ -198,12 +222,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19'],
+            'search' => ['value' => 'Record-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
 
@@ -219,12 +243,12 @@ class QueryDataTableTest extends TestCase
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => 'Record-19'],
+            'search' => ['value' => 'Record-19'],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
 
@@ -238,10 +262,10 @@ class QueryDataTableTest extends TestCase
         $crawler = $this->call('GET', '/query/search-panes');
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 20,
-            'searchPanes'     => [
+            'searchPanes' => [
                 'options' => [
                     'id' => [],
                 ],
@@ -263,8 +287,8 @@ class QueryDataTableTest extends TestCase
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 2,
         ]);
     }
@@ -274,16 +298,22 @@ class QueryDataTableTest extends TestCase
     {
         $crawler = $this->call('GET', '/query/blacklisted-filter', [
             'columns' => [
-                ['data' => 'foo', 'name' => 'foo', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => 'Record-1']],
+                [
+                    'data' => 'foo',
+                    'name' => 'foo',
+                    'searchable' => 'true',
+                    'orderable' => 'true',
+                    'search' => ['value' => 'Record-1'],
+                ],
                 ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
                 ['data' => 'email', 'name' => 'email', 'searchable' => 'true', 'orderable' => 'true'],
             ],
-            'search'  => ['value' => ''],
+            'search' => ['value' => ''],
         ]);
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 1,
         ]);
     }
@@ -294,8 +324,8 @@ class QueryDataTableTest extends TestCase
         $crawler = $this->call('GET', '/query/formatColumn');
 
         $crawler->assertJson([
-            'draw'            => 0,
-            'recordsTotal'    => 20,
+            'draw' => 0,
+            'recordsTotal' => 20,
             'recordsFiltered' => 20,
         ]);
 
@@ -309,39 +339,59 @@ class QueryDataTableTest extends TestCase
         $this->assertEquals(Carbon::parse($user->created_at)->format('Y-m-d'), $data['created_at_formatted']);
     }
 
+    /** @test */
+    public function it_can_return_added_column_with_dependency_injection()
+    {
+        $crawler = $this->call('GET', '/closure-di');
+
+        $crawler->assertJson([
+            'draw' => 0,
+            'recordsTotal' => 20,
+            'recordsFiltered' => 20,
+        ]);
+
+        $user = DB::table('users')->find(1);
+        $data = $crawler->json('data')[0];
+
+        $this->assertTrue(isset($data['name']));
+        $this->assertTrue(isset($data['name_di']));
+
+        $this->assertEquals($user->name.'_di', $data['name_di']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $route = $this->app['router'];
+        $router = $this->app['router'];
 
-        $route->get('/query/users', function (DataTables $dataTable) {
+        $router->get('/query/users', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))->toJson();
         });
 
-        $route->get('/query/formatColumn', function (DataTables $dataTable) {
+        $router->get('/query/formatColumn', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
-                        ->formatColumn('created_at', new DateFormatter('Y-m-d'))
-                        ->toJson();
+                             ->formatColumn('created_at', new DateFormatter('Y-m-d'))
+                             ->toJson();
         });
 
-        $route->get('/query/simple', function (DataTables $dataTable) {
+        $router->get('/query/simple', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))->skipTotalRecords()->toJson();
         });
 
-        $route->get('/query/addColumn', function (DataTables $dataTable) {
+        $router->get('/query/addColumn', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', 'bar')
                              ->toJson();
         });
 
-        $route->get('/query/indexColumn', function (DataTables $dataTable) {
+        $router->get('/query/indexColumn', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addIndexColumn()
                              ->toJson();
         });
 
-        $route->get('/query/filterColumn', function (DataTables $dataTable) {
+        $router->get('/query/filterColumn', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', 'bar')
                              ->filterColumn('foo', function (Builder $builder, $keyword) {
@@ -350,7 +400,7 @@ class QueryDataTableTest extends TestCase
                              ->toJson();
         });
 
-        $route->get('/query/blacklisted-filter', function (DataTables $dataTable) {
+        $router->get('/query/blacklisted-filter', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', 'bar')
                              ->filterColumn('foo', function (Builder $builder, $keyword) {
@@ -360,14 +410,14 @@ class QueryDataTableTest extends TestCase
                              ->toJson();
         });
 
-        $route->get('/query/only', function (DataTables $dataTable) {
+        $router->get('/query/only', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', 'bar')
                              ->only(['name'])
                              ->toJson();
         });
 
-        $route->get('/query/xss-add', function (DataTables $dataTable) {
+        $router->get('/query/xss-add', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', '<a href="#">Allowed</a>')
                              ->addColumn('bar', function () {
@@ -376,7 +426,7 @@ class QueryDataTableTest extends TestCase
                              ->toJson();
         });
 
-        $route->get('/query/xss-edit', function (DataTables $dataTable) {
+        $router->get('/query/xss-edit', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->editColumn('name', '<a href="#">Allowed</a>')
                              ->editColumn('email', function () {
@@ -385,7 +435,7 @@ class QueryDataTableTest extends TestCase
                              ->toJson();
         });
 
-        $route->get('/query/xss-raw', function (DataTables $dataTable) {
+        $router->get('/query/xss-raw', function (DataTables $dataTable) {
             return $dataTable->query(DB::table('users'))
                              ->addColumn('foo', '<a href="#">Allowed</a>')
                              ->editColumn('name', '<a href="#">Allowed</a>')
@@ -396,31 +446,38 @@ class QueryDataTableTest extends TestCase
                              ->toJson();
         });
 
-        $route->get('/query/search-panes', function (DataTables $dataTable) {
+        $router->get('/query/search-panes', function (DataTables $dataTable) {
             $options = User::select('id as value', 'name as label')->get();
 
             return $dataTable->query(DB::table('users'))
-                        ->searchPane('id', $options)
-                        ->toJson();
+                             ->searchPane('id', $options)
+                             ->toJson();
         });
-    }
-}
 
-class DateFormatter implements Formatter
-{
-    protected $format;
+        $router->get('/set-total-records', function (DataTables $dataTable) {
+            return $dataTable->query(DB::table('users'))
+                             ->setTotalRecords(10)
+                             ->toJson();
+        });
 
-    public function __construct($format = null)
-    {
-        $this->format = $format;
-    }
+        $router->get('/zero-total-records', function (DataTables $dataTable) {
+            return $dataTable->query(DB::table('users'))
+                             ->setTotalRecords(0)
+                             ->toJson();
+        });
 
-    public function format($value, $row)
-    {
-        if ($this->format) {
-            return Carbon::parse($value)->format($this->format);
-        }
+        $router->get('/set-filtered-records', function (DataTables $dataTable) {
+            return $dataTable->query(DB::table('users'))
+                             ->setFilteredRecords(10)
+                             ->toJson();
+        });
 
-        return Carbon::parse($value)->diffForHumans();
+        $router->get('/closure-di', function (DataTables $dataTable) {
+            return $dataTable->query(DB::table('users'))
+                             ->addColumn('name_di', function ($user, User $u) {
+                                 return $u->newQuery()->find($user->id)->name.'_di';
+                             })
+                             ->toJson();
+        });
     }
 }
