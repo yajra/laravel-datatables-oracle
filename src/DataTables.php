@@ -107,6 +107,7 @@ class DataTables
     /**
      * DataTables using Query.
      *
+
      * @param  QueryBuilder  $builder
      * @return \Yajra\DataTables\QueryDataTable
      */
@@ -135,6 +136,17 @@ class DataTables
     public function collection($collection): CollectionDataTable
     {
         return CollectionDataTable::create($collection);
+    }
+
+    /**
+     * DataTables using Collection.
+     *
+     * @param  \Illuminate\Http\Resources\Json\AnonymousResourceCollection|array  $collection
+     * @return ApiResourceDataTable|DataTableAbstract
+     */
+    public function resource($resource)
+    {
+        return ApiResourceDataTable::create($resource);
     }
 
     /**
